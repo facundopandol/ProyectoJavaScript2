@@ -1,4 +1,3 @@
-
 let entradasDisponibles = [
     { tipo: 'General', precio: 500.0, cantidad: 100 },
     { tipo: 'VIP', precio: 2000.0, cantidad: 20 },
@@ -7,83 +6,144 @@ let entradasDisponibles = [
 ];
 
 let carrito = [];
+let informacionUsuario = {};
 
-function agregarEntrada() {
-    let tipoEntrada;
-    let entrada;
-    do {
-        tipoEntrada = prompt('Ingrese el tipo de entrada (General, VIP, Tribuna Derecha, Tribuna Izquierda):');
-        if (!tipoEntrada) {
-            alert('El tipo de entrada no puede estar vacío.');
-            continue;
-        }
-        entrada = entradasDisponibles.find(entradas => entradas.tipo.toLowerCase() === tipoEntrada.toLowerCase());
-        if (!entrada) {
-            alert('El tipo de entrada ingresado no es válido.');
-        }
+function agregarEntrada(entrada) {
+    const cantidad = parseInt(prompt(`Ingrese la cantidad de entradas ${entrada.tipo} a comprar:`));
+    if (isNaN(cantidad) || cantidad <= 0) {
+        alert('La cantidad ingresada no es válida. Por favor ingrese un número válido.');
+        return;
     }
-    while (!entrada);
-    let cantidad;
-    do {
-        cantidad = parseInt(prompt('Ingrese la cantidad de entradas a comprar:'));
+    if (entrada.cantidad < cantidad) {
+        alert('Lo sentimos, no hay suficientes entradas disponibles en esa ubicación.');
+        return;
+    }
 
-        if (isNaN(cantidad)) {
-            alert('La cantidad ingresada no es válida. Por favor ingrese un número');
-        } else if (entrada.cantidad < cantidad) {
-            alert('Lo sentimos, no hay suficientes entradas disponibles en esa ubicación.');
-        }
-    } while (isNaN(cantidad) || entrada.cantidad < cantidad);
-    let subtotal = entrada.precio * cantidad;
-    carrito.push({ tipo: tipoEntrada, precio: entrada.precio, cantidad, subtotal });
+    const subtotal = entrada.precio * cantidad;
+    const entradaExistente = carrito.find(e => e.tipo === entrada.tipo);
+
+    if (entradaExistente) {
+        entradaExistente.cantidad += cantidad;
+        entradaExistente.subtotal += subtotal;
+    } else {
+        carrito.push({ tipo: entrada.tipo, precio: entrada.precio, cantidad, subtotal });
+    }
 
     // ACTUALIZAR STOCK DE ENTRADAS
     entrada.cantidad -= cantidad;
-    alert(`Se agregaron ${cantidad} entradas ${tipoEntrada} al carrito.`);
+    alert(`Se agregaron ${cantidad} entradas ${entrada.tipo} al carrito.`);
+
+    localStorage.setItem('carrito', JSON.stringify(carrito)); // Almacenar carrito en el almacenamiento local
+
+    mostrarCarrito(); // Actualizar la visualización del carrito
 }
 
-//COMPRAR MAS ENTRADAS O REALIZAR COMPRA
-let continuarCompra = 's';
-while (continuarCompra.toLowerCase() === 's') {
-    agregarEntrada();
-    continuarCompra = prompt('¿Desea agregar más entradas? s/n');
-    if (continuarCompra.toLowerCase() === 'n') {
-        verCarrito();
-        realizarCompra();
+function mostrarEntradasDisponibles() {
+    const container = document.getElementById('entradas-container');
+    container.innerHTML = '';
+
+    entradasDisponibles.forEach(entrada => {
+        const boton = document.createElement('button');
+        boton.textContent = entrada.tipo;
+        boton.classList.add('button');
+        boton.addEventListener('click', () => agregarEntrada(entrada));
+        container.appendChild(boton);
+    });
+}
+
+function mostrarCarrito() {
+    const carritoContenedor = document.getElementById('carrito-container');
+    carritoContenedor.innerHTML = '';
+
+    const carritoAlmacenado = JSON.parse(localStorage.getItem('carrito'));
+    const informacionUsuarioAlmacenada = JSON.parse(localStorage.getItem('informacionUsuario'));
+
+    if (carritoAlmacenado && carritoAlmacenado.length > 0) {
+        let total = 0;
+
+        carritoAlmacenado.forEach(entrada => {
+            const entradaElement = document.createElement('p');
+            entradaElement.textContent = `${entrada.cantidad} entradas ${entrada.tipo} $${entrada.precio} cada una. Subtotal: $${entrada.subtotal}`;
+            carritoContenedor.appendChild(entradaElement);
+            total += entrada.subtotal;
+        });
+
+        const totalElement = document.createElement('p');
+        totalElement.textContent = `Total: $${total}`;
+
+        carritoContenedor.appendChild(totalElement);
+    } else {
+        carritoContenedor.textContent = 'El carrito está vacío.';
     }
 }
 
-// CARRITO DE COMPRAS
-function verCarrito() {
-    if (carrito.length === 0) {
-        alert('El carrito está vacío.');
-        return;
+function toggleCarrito() {
+    const carritoContenedor = document.getElementById('carrito-container');
+
+    if (carritoContenedor.classList.contains('hidden')) {
+        carritoContenedor.classList.remove('hidden'); // Mostrar el carrito
+        mostrarCarrito(); // Actualizar la visualización del carrito
+    } else {
+        carritoContenedor.classList.add('hidden'); // Ocultar el carrito
     }
-    let carritoTemporal = 'Carrito:\n';
-    let total = 0;
-    for (let entrada of carrito) {
-        carritoTemporal += `${entrada.cantidad} entradas ${entrada.tipo} $${entrada.precio} cada una. Subtotal: $${entrada.subtotal}\n`;
-        total += entrada.subtotal;
-    }
-    carritoTemporal += `Total: $${total}`;
-    alert(carritoTemporal);
 }
-
-
 
 function realizarCompra() {
     if (carrito.length === 0) {
-        alert('Debe seleccionar al menos una entrada para realizar la compra.');
+        alert('El carrito está vacío. No se puede realizar la compra.');
         return;
     }
 
-    // ARMAR NUEVO ARRAY CON LOS DATOS DEL COMPRADOR A PARTIR DE LOS SIG PROMPTS PARA GENERAR BASE DE DATOS
-    // DATOS DEL USUARIO
     const nombre = prompt('Ingrese su nombre:');
     const email = prompt('Ingrese su correo electrónico:');
     const telefono = prompt('Ingrese su número de teléfono:');
 
+    informacionUsuario = {
+        nombre,
+        email,
+        telefono
+    };
 
     alert('Usted ha reservado sus entradas satisfactoriamente. Por email le llegará el comprobante para realizar el pago.\nGracias por usar nuestra página.');
+
+    // Actualizar la información del usuario y reiniciar el carrito
+    localStorage.setItem('informacionUsuario', JSON.stringify(informacionUsuario));
+    localStorage.removeItem('carrito');
+    carrito = [];
+
+    mostrarCarrito(); // Actualizar la visualización del carrito
 }
 
-agregarEntrada();
+// Verificar si hay carrito y/o información de usuario almacenados en el almacenamiento local
+const carritoAlmacenado = JSON.parse(localStorage.getItem('carrito'));
+const informacionUsuarioAlmacenada = JSON.parse(localStorage.getItem('informacionUsuario'));
+
+if (carritoAlmacenado) {
+    carrito = carritoAlmacenado;
+}
+
+if (informacionUsuarioAlmacenada) {
+    informacionUsuario = informacionUsuarioAlmacenada;
+}
+
+mostrarEntradasDisponibles();
+
+// Agregar botón "Mostrar carrito"
+const mostrarCarritoButton = document.createElement('button');
+mostrarCarritoButton.textContent = 'Mostrar carrito';
+mostrarCarritoButton.classList.add('button');
+mostrarCarritoButton.addEventListener('click', toggleCarrito);
+document.getElementById('carrito-button-container').appendChild(mostrarCarritoButton);
+
+// Agregar botón "Realizar compra"
+const realizarCompraButton = document.createElement('button');
+realizarCompraButton.textContent = 'Realizar compra';
+realizarCompraButton.classList.add('button');
+realizarCompraButton.addEventListener('click', () => {
+    if (carrito.length > 0) {
+        realizarCompra();
+    } else {
+        alert('El carrito está vacío. No se puede realizar la compra.');
+    }
+});
+document.getElementById('carrito-button-container').appendChild(realizarCompraButton);
